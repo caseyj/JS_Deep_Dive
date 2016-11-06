@@ -14,12 +14,13 @@
 *
 *
 */
-function arc_point(source_index, source_identifier, data){
+function arc_point(source_index, source_identifier, data, DT){
 	return {
 		"source_index": source_index,
 		"source_identifier": source_identifier,
 		//reference string to the datapoint 
-		"data": data
+		"data": data,
+		"data_type": DT
 	};
 }
 
@@ -97,7 +98,8 @@ reference_stack = function(){
 
 reference_stack.prototype.push = function(data){
 	if(this.head!=null){
-			this.stack.unshift(data);
+			this.stack.unshift(this.head);
+			this.head = data;
 	}
 	else{
 		this.head = data;
@@ -132,34 +134,40 @@ reference_stack.prototype.pop = function(){
 *
 */
 traverse_network = function(js_object){
-	console.log(js_object);
+	//console.log(js_object);
 	var seen_refs = {};
 	var adjacencies = [];
-	var todo_list = new reference_stack();
-	var start = arc_point(null, null, js_object);
+	var todo_list = [];
+	var start = arc_point(null, null, js_object, object_identifier(js_object));
 	todo_list.push(start);
 	adjacencies.push(start);
-	console.log(adjacencies);
-	console.log(todo_list);
-	console.log(todo_list.head);
-	console.log(todo_list.stack);
-	while(todo_list.head!=null){
+	while(todo_list[0]!=null){
+		//console.log(todo_list);
 		var current_arc_point = todo_list.pop();
-
 		var arc_data = current_arc_point.data;
-		//console.log(arc_data);
 		if(!primitive_identifier(arc_data)){
 			seen_refs[arc_data] = true;
 			switch (object_identifier(arc_data)){
-				case "obj":
+				case "object":
 				case "array":
 					Object.keys(arc_data).forEach(function(key){
 						var narc_data = arc_data[key];
-						var new_arc = arc_point(key,arc_data,narc_data);
-						adjacencies.push(new_arc);
-						//console.log(adjacencies);
-						if(!seen_refs[narc_data]){
-							todo_list.push(new_arc);
+						if(!primitive_identifier(narc_data)){
+							var new_arc = arc_point(key,arc_data,narc_data, object_identifier(narc_data));
+							adjacencies.unshift(new_arc);
+							//console.log(adjacencies);
+							if(!seen_refs[narc_data]){
+								todo_list.push(new_arc);
+							}
+						}
+
+						else{
+							var new_arc = arc_point(key,arc_data,narc_data, typeof(narc_data));
+							adjacencies.unshift(new_arc);
+							//console.log(adjacencies);
+							if(!seen_refs[narc_data]){
+								todo_list.push(new_arc);
+							}	
 						}
 
 					});
@@ -216,14 +224,18 @@ copy_network = function(js_object){
 }
 
 var testDriver = function(){
-	var arr = [];
+	var arrNumbers = [];
+	var arrObjects = [];
 	console.log("hello World");
 	for(var i = 0; i<=100; i++){
-		arr.push(i);
+		arrNumbers.push(i);
+		arrObjects.push({"data":i});
 	}
-	console.log(arr);
-	var net = traverse_network(arr);
-	console.log(net);
+	console.log(traverse_network(arrObjects));
+	console.log(traverse_network(arrNumbers));
+
+
+
 }
 
 testDriver();
