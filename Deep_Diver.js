@@ -135,12 +135,16 @@ reference_stack.prototype.pop = function(){
 */
 traverse_network = function(js_object){
 	//console.log(js_object);
+	var ID = 0;
 	var seen_refs = {};
 	var adjacencies = [];
 	var todo_list = [];
-	var start = arc_point(null, null, js_object, object_identifier(js_object));
+	var start = arc_point(null, ID, js_object, object_identifier(js_object));
 	todo_list.push(start);
 	adjacencies.push(start);
+	var masterOBJ = {};
+	masterOBJ[start] = ID;
+	ID++;
 	while(todo_list[0]!=null){
 		//console.log(todo_list);
 		var current_arc_point = todo_list.pop();
@@ -153,7 +157,9 @@ traverse_network = function(js_object){
 					Object.keys(arc_data).forEach(function(key){
 						var narc_data = arc_data[key];
 						if(!primitive_identifier(narc_data)){
-							var new_arc = arc_point(key,arc_data,narc_data, object_identifier(narc_data));
+							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, object_identifier(narc_data));
+							masterOBJ[new_arc]= ID;
+							ID++
 							adjacencies.unshift(new_arc);
 							//console.log(adjacencies);
 							if(!seen_refs[narc_data]){
@@ -162,7 +168,9 @@ traverse_network = function(js_object){
 						}
 
 						else{
-							var new_arc = arc_point(key,arc_data,narc_data, typeof(narc_data));
+							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, typeof(narc_data));
+							masterOBJ[new_arc]= ID;
+							ID++
 							adjacencies.unshift(new_arc);
 							//console.log(adjacencies);
 							if(!seen_refs[narc_data]){
@@ -226,13 +234,16 @@ copy_network = function(js_object){
 var testDriver = function(){
 	var arrNumbers = [];
 	var arrObjects = [];
+	var arrSuperNest = [];
 	console.log("hello World");
 	for(var i = 0; i<=100; i++){
 		arrNumbers.push(i);
 		arrObjects.push({"data":i});
+		arrSuperNest.push({"data":{"moreData":{"moremoreData":i}}})
 	}
 	console.log(traverse_network(arrObjects));
 	console.log(traverse_network(arrNumbers));
+	console.log(traverse_network(arrSuperNest));
 
 
 
