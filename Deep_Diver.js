@@ -84,43 +84,6 @@ primitive_identifier = function(incoming_primitive){
 	}
 }
 
-/**
-*Class for creating and dealing with a 
-*
-*
-*
-*
-*/
-reference_stack = function(){
-	this.head= null,
-	this.stack = []
-}
-
-reference_stack.prototype.push = function(data){
-	if(this.head!=null){
-			this.stack.unshift(this.head);
-			this.head = data;
-	}
-	else{
-		this.head = data;
-	}
-}
-/*
-*
-*
-*
-*/
-reference_stack.prototype.pop = function(){
-	var popped = this.head;
-	if(this.stack.length>0){
-		var shifticle = this.stack.shift();
-		this.head = shifticle;
-	}
-	else{
-		this.head = null;
-	}
-	return popped;
-}
 
 /*
 *Function which will locate all objects to be copied and store their references
@@ -134,52 +97,73 @@ reference_stack.prototype.pop = function(){
 *
 */
 traverse_network = function(js_object){
-	//console.log(js_object);
+	//create an ID variable which will keep track of unique objects found
 	var ID = 0;
+	//the references we have already seen, we want to avoid cycles, so it maps OBJECT->boolean
 	var seen_refs = {};
+	//the adjacency list of object references to values and other objects
 	var adjacencies = [];
+	//the stack we track references to be explored via topology
 	var todo_list = [];
+	//create an adjacency object and push it onto the adjacency list and the todo_list
 	var start = arc_point(null, ID, js_object, object_identifier(js_object));
 	todo_list.push(start);
 	adjacencies.push(start);
+	//maps the first object to it's ID, maps OBJECT->ID
 	var masterOBJ = {};
 	masterOBJ[start] = ID;
 	ID++;
+	//loop while theres still references to be explored on the object graph
 	while(todo_list[0]!=null){
-		//console.log(todo_list);
+		//pop off the reference on todo_list[size-1]
 		var current_arc_point = todo_list.pop();
 		var arc_data = current_arc_point.data;
+		//if the data isnt primitive we will loop!
+		//primitive data are anything that are not objects which hold other peices of data
+		//in this case strings are primitives as well as numeric values and booleans
 		if(!primitive_identifier(arc_data)){
+			//mark this datapoint as seen, we dont need to look at it ever again as we are about to 
+			//	stack the references
 			seen_refs[arc_data] = true;
+			//switch on the datatype: 
+				//nulls are objects so we ignore them, other peices of data are
+				//		then deconstructed by their contained identifiers, 
+				//		stacked and explored
 			switch (object_identifier(arc_data)){
 				case "object":
 				case "array":
 					Object.keys(arc_data).forEach(function(key){
+						console.log(key);
+						//look at the data at that key
 						var narc_data = arc_data[key];
+						//if its not a primitive and refers to another object, we got here and stack it up
 						if(!primitive_identifier(narc_data)){
+							//create a new arc object tracking data to and from this datapoint and key 
 							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, object_identifier(narc_data));
+							//map this arc to the current ID
 							masterOBJ[new_arc]= ID;
 							ID++
 							adjacencies.unshift(new_arc);
-							//console.log(adjacencies);
+							console.log(seen_refs);
+							//if we have not seen this datapoint yet we will add it to the stack and eventually get to it
 							if(!seen_refs[narc_data]){
 								todo_list.push(new_arc);
 							}
 						}
-
+						//its a primitive so we need to map it and NOT recurse
 						else{
+							//create a new arc object for this reference to primitive data, and then add it to the adjacency list
 							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, typeof(narc_data));
 							masterOBJ[new_arc]= ID;
 							ID++
 							adjacencies.unshift(new_arc);
-							//console.log(adjacencies);
-							if(!seen_refs[narc_data]){
-								todo_list.push(new_arc);
-							}	
 						}
 
 					});
+					break;
+				//ignore nulls entirely
 				case "null":
+					break;
 				default: 
 					break;
 			}
@@ -235,14 +219,28 @@ var testDriver = function(){
 	var arrNumbers = [];
 	var arrObjects = [];
 	var arrSuperNest = [];
-	console.log("hello World");
 	for(var i = 0; i<=100; i++){
 		arrNumbers.push(i);
 		arrObjects.push({"data":i});
-		arrSuperNest.push({"data":{"moreData":{"moremoreData":i}}})
+		arrSuperNest.push(
+			{
+				"data":{
+					"moreData":{
+						"moremoreData":i
+					}
+				}
+			}
+		)
 	}
-	console.log(traverse_network(arrObjects));
-	console.log(traverse_network(arrNumbers));
+	console.log("SuperNest:");
+	console.log(arrSuperNest);
+	console.log("SuperNest end");
+
+	console.log("array of objects");
+	//console.log(traverse_network(arrObjects));
+	console.log("array of numbers");
+	//console.log(traverse_network(arrNumbers));
+	console.log("supernest");
 	console.log(traverse_network(arrSuperNest));
 
 
