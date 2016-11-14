@@ -150,32 +150,25 @@ traverse_network = function(js_object){
 		var current_arc_point = todo_list.pop();
 		var arc_data = current_arc_point.data;
 		if(!primitive_identifier(arc_data)){
-			seen_refs[arc_data] = true;
 			switch (object_identifier(arc_data)){
 				case "object":
 				case "array":
 					Object.keys(arc_data).forEach(function(key){
 						var narc_data = arc_data[key];
+						var new_arc;
 						if(!primitive_identifier(narc_data)){
-							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, object_identifier(narc_data));
-							masterOBJ[new_arc]= ID;
-							ID++
-							adjacencies.unshift(new_arc);
-							//console.log(adjacencies);
-							if(!seen_refs[narc_data]){
-								todo_list.push(new_arc);
-							}
+							new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, object_identifier(narc_data));
 						}
-
 						else{
-							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, typeof(narc_data));
-							masterOBJ[new_arc]= ID;
-							ID++
-							adjacencies.unshift(new_arc);
-							//console.log(adjacencies);
-							if(!seen_refs[narc_data]){
-								todo_list.push(new_arc);
-							}	
+							new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, typeof(narc_data));	
+						}
+						masterOBJ[new_arc]= ID;
+						ID++
+						adjacencies.unshift(new_arc);
+						//console.log(adjacencies);
+						if(!seen_refs.hasOwnProperty(narc_data)){
+							seen_refs[narc_data] = ID;
+							todo_list.push(new_arc);
 						}
 
 					});
@@ -241,8 +234,8 @@ var testDriver = function(){
 		arrObjects.push({"data":i});
 		arrSuperNest.push({"data":{"moreData":{"moremoreData":i}}})
 	}
-	console.log(traverse_network(arrObjects));
 	console.log(traverse_network(arrNumbers));
+	console.log(traverse_network(arrObjects));
 	console.log(traverse_network(arrSuperNest));
 
 
