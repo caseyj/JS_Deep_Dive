@@ -6,6 +6,8 @@
 		object network. With this system any javascript object should be taken 
 		and all connected pieces of data will be appropriately deep copied into
 		the target clone copy. 
+
+		In this current version a starting object(NODE) is given and
 *
 */
 
@@ -18,7 +20,6 @@ function arc_point(source_index, source_identifier, data, DT){
 	return {
 		"source_index": source_index,
 		"source_identifier": source_identifier,
-		//reference string to the datapoint 
 		"data": data,
 		"data_type": DT
 	};
@@ -84,6 +85,8 @@ primitive_identifier = function(incoming_primitive){
 	}
 }
 
+//var depth_string = function()
+
 
 /*
 *Function which will locate all objects to be copied and store their references
@@ -96,11 +99,11 @@ primitive_identifier = function(incoming_primitive){
 *
 *
 */
-traverse_network = function(js_object){
+var traverse_network = function(js_object){
 	//create an ID variable which will keep track of unique objects found
 	var ID = 0;
 	//the references we have already seen, we want to avoid cycles, so it maps OBJECT->boolean
-	var seen_refs = {};
+	var seen_refs = [];
 	//the adjacency list of object references to values and other objects
 	var adjacencies = [];
 	//the stack we track references to be explored via topology
@@ -124,7 +127,7 @@ traverse_network = function(js_object){
 		if(!primitive_identifier(arc_data)){
 			//mark this datapoint as seen, we dont need to look at it ever again as we are about to 
 			//	stack the references
-			seen_refs[arc_data] = true;
+			seen_refs.push(arc_data);
 			//switch on the datatype: 
 				//nulls are objects so we ignore them, other peices of data are
 				//		then deconstructed by their contained identifiers, 
@@ -133,7 +136,6 @@ traverse_network = function(js_object){
 				case "object":
 				case "array":
 					Object.keys(arc_data).forEach(function(key){
-						console.log(key);
 						//look at the data at that key
 						var narc_data = arc_data[key];
 						//if its not a primitive and refers to another object, we got here and stack it up
@@ -143,10 +145,10 @@ traverse_network = function(js_object){
 							//map this arc to the current ID
 							masterOBJ[new_arc]= ID;
 							ID++
-							adjacencies.unshift(new_arc);
-							console.log(seen_refs);
+							adjacencies.push(new_arc);
+							//console.log(seen_refs);
 							//if we have not seen this datapoint yet we will add it to the stack and eventually get to it
-							if(!seen_refs[narc_data]){
+							if(!(narc_data in seen_refs)){
 								todo_list.push(new_arc);
 							}
 						}
@@ -156,7 +158,7 @@ traverse_network = function(js_object){
 							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, typeof(narc_data));
 							masterOBJ[new_arc]= ID;
 							ID++
-							adjacencies.unshift(new_arc);
+							adjacencies.push(new_arc);
 						}
 
 					});
@@ -222,24 +224,23 @@ var testDriver = function(){
 	for(var i = 0; i<=100; i++){
 		arrNumbers.push(i);
 		arrObjects.push({"data":i});
-		arrSuperNest.push(
-			{
-				"data":{
-					"moreData":{
-						"moremoreData":i
-					}
-				}
-			}
-		)
-	}
-	console.log("SuperNest:");
-	console.log(arrSuperNest);
-	console.log("SuperNest end");
+		var moremoreData = {};
+		var moreData = {};
+		var data = {};
+		moremoreData["moremoreData"] = i;
+		moreData["moreData"] = moremoreData;
+		data["data"] = moreData;
 
-	console.log("array of objects");
-	//console.log(traverse_network(arrObjects));
+		arrSuperNest.push(data);
+	}
+	//console.log("SuperNest:");
+	//console.log(arrSuperNest);
+	//console.log("SuperNest end");
+
 	console.log("array of numbers");
-	//console.log(traverse_network(arrNumbers));
+	console.log(traverse_network(arrNumbers));
+	console.log("array of objects");
+	console.log(traverse_network(arrObjects));
 	console.log("supernest");
 	console.log(traverse_network(arrSuperNest));
 
