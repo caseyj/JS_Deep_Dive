@@ -99,7 +99,7 @@ primitive_identifier = function(incoming_primitive){
 *
 *
 */
-var traverse_network = function(js_object){
+var decompose_network = function(js_object){
 	//create an ID variable which will keep track of unique objects found
 	var ID = 0;
 	//the references we have already seen, we want to avoid cycles, so it maps OBJECT->boolean
@@ -108,19 +108,23 @@ var traverse_network = function(js_object){
 	var adjacencies = [];
 	//the stack we track references to be explored via topology
 	var todo_list = [];
+	//list of seen objects by ID
+	var objectTracker = {};
 	//create an adjacency object and push it onto the adjacency list and the todo_list
 	var start = arc_point(null, ID, js_object, object_identifier(js_object));
 	todo_list.push(start);
 	adjacencies.push(start);
 	//maps the first object to it's ID, maps OBJECT->ID
 	var masterOBJ = {};
-	masterOBJ[start] = ID;
+	masterOBJ[start]= ID;
+	objectTracker[ID] = start;
 	ID++;
 	//loop while theres still references to be explored on the object graph
 	while(todo_list[0]!=null){
 		//pop off the reference on todo_list[size-1]
 		var current_arc_point = todo_list.pop();
 		var arc_data = current_arc_point.data;
+		var my_ID = masterOBJ[current_arc_point];
 		//if the data isnt primitive we will loop!
 		//primitive data are anything that are not objects which hold other peices of data
 		//in this case strings are primitives as well as numeric values and booleans
@@ -139,18 +143,25 @@ var traverse_network = function(js_object){
 						//look at the data at that key
 						var narc_data = arc_data[key];
 						//if its not a primitive and refers to another object, we got here and stack it up
-						if(!primitive_identifier(narc_data)){
+						if(!primitive_identifier(narc_data)&&object_identifier(narc_data)!="null"){
 							//create a new arc object tracking data to and from this datapoint and key 
-							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, object_identifier(narc_data));
+							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data));
 							//map this arc to the current ID
-							masterOBJ[new_arc]= ID;
-							ID++
 							adjacencies.push(new_arc);
 							//console.log(seen_refs);
 							//if we have not seen this datapoint yet we will add it to the stack and eventually get to it
 							if(!(narc_data in seen_refs)){
+								masterOBJ[new_arc]= ID;
+								objectTracker[ID] = new_arc;
+								ID++
 								todo_list.push(new_arc);
 							}
+						}
+						else if(object_identifier(narc_data)!="null"){
+							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data));
+							masterOBJ[new_arc]= ID;
+							ID++
+							adjacencies.push(new_arc);
 						}
 						//its a primitive so we need to map it and NOT recurse
 						else{
@@ -172,7 +183,51 @@ var traverse_network = function(js_object){
 		}
 		
 	}
-	return adjacencies;
+	return { "Object_Nodes": objectTracker, "adjacency_list":adjacencies};
+}
+
+/***
+*Takes in a decomposed object network, reconstructs the object network and returns
+*	the reconstructed network
+*
+*INPUTS:
+*
+*OUTPUTS:
+*/
+var recompose_network= function(network_decomposition){
+	var node_list = network_decomposition["Object_Nodes"];
+	var adjacencies = network_decomposition["adjacency_list"];
+
+	var start = null;
+	//check if we start with an object or an array to get things started
+	switch(node_list[0]["data_type"]){
+		case "object":
+			start = {};
+			break;
+		case "array":
+			start = [];
+			break;
+		default:
+			return node_list[0]["data"];
+			break;
+	}
+	//adjacencies we have seen
+	var seen_adjacencies = {};
+	var seen_nodes = {};
+	//set all seen adjacencies to false
+	//also set all seen nodes to false
+	for(var i = 1; i<adjacencies.length(); i++){
+		seen_adjacencies[adjacencies[i]] = false;
+		seen_nodes[adjacencies[i]["source_identifier"]] = false;
+	}
+	//for loop through the adjacencies
+	for(var i = adjacencies.length(); i>0; --i){
+		
+	}
+
+
+
+	return {};
 }
 
 
@@ -217,6 +272,15 @@ copy_network = function(js_object){
 	return decode(encode(js_object));
 }
 
+
+
+/**
+*A simple driver to show how the tools in this project work.
+*
+*
+*
+*
+*/
 var testDriver = function(){
 	var arrNumbers = [];
 	var arrObjects = [];
@@ -233,16 +297,35 @@ var testDriver = function(){
 
 		arrSuperNest.push(data);
 	}
+
+	var o1 = {};
+	var o4 = {};
+	var o3 = {};
+	var o2 = {};
+
+	o1["data"] = 1;
+	o1["next"] = o4;
+
+	o4["data"] = 4;
+	o4["next"] = o3;
+
+	o3["data"] = 3;
+	o3["next"] = o2;
+
+	o2["data"] = 2;
+	o2["next"] = null;
 	//console.log("SuperNest:");
 	//console.log(arrSuperNest);
 	//console.log("SuperNest end");
 
 	console.log("array of numbers");
-	console.log(traverse_network(arrNumbers));
+	console.log(decompose_network(arrNumbers));
 	console.log("array of objects");
-	console.log(traverse_network(arrObjects));
+	console.log(decompose_network(arrObjects));
 	console.log("supernest");
-	console.log(traverse_network(arrSuperNest));
+	console.log(decompose_network(arrSuperNest));
+	console.log("object_refs");
+	console.log(decompose_network(o1));
 
 
 
