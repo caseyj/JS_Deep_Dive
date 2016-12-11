@@ -139,7 +139,7 @@ var decompose_network = function(js_object){
 			switch (object_identifier(arc_data)){
 				case "object":
 				case "array":
-					Object.keys(arc_data).forEach(function(key){
+					Object.keys(arc_data).sort().forEach(function(key){
 						//look at the data at that key
 						var narc_data = arc_data[key];
 						//if its not a primitive and refers to another object, we got here and stack it up
@@ -150,11 +150,14 @@ var decompose_network = function(js_object){
 							adjacencies.push(new_arc);
 							//console.log(seen_refs);
 							//if we have not seen this datapoint yet we will add it to the stack and eventually get to it
-							if(!(narc_data in seen_refs)){
+							if(seen_refs.indexOf(narc_data)==-1){
 								masterOBJ[new_arc]= ID;
 								objectTracker[ID] = new_arc;
 								ID++
 								todo_list.push(new_arc);
+							}
+							else{
+								new_arc["data"] = "object " + seen_refs.indexOf(narc_data);
 							}
 						}
 						else if(object_identifier(narc_data)!="null"){
@@ -274,6 +277,8 @@ copy_network = function(js_object){
 
 
 
+
+
 /**
 *A simple driver to show how the tools in this project work.
 *
@@ -291,9 +296,11 @@ var testDriver = function(){
 		var moremoreData = {};
 		var moreData = {};
 		var data = {};
-		moremoreData["moremoreData"] = i;
+		moremoreData["moremoreData"] = null;
 		moreData["moreData"] = moremoreData;
 		data["data"] = moreData;
+
+		moremoreData["moremoreData"] = i;
 
 		arrSuperNest.push(data);
 	}
@@ -314,6 +321,11 @@ var testDriver = function(){
 
 	o2["data"] = 2;
 	o2["next"] = null;
+
+	console.log("object_refs");
+	console.log(decompose_network(o1));
+	o2["next"] = o1;
+
 	//console.log("SuperNest:");
 	//console.log(arrSuperNest);
 	//console.log("SuperNest end");
@@ -324,7 +336,7 @@ var testDriver = function(){
 	console.log(decompose_network(arrObjects));
 	console.log("supernest");
 	console.log(decompose_network(arrSuperNest));
-	console.log("object_refs");
+	console.log("object_refs v2");
 	console.log(decompose_network(o1));
 
 
