@@ -111,7 +111,7 @@ var decompose_network = function(js_object){
 	//list of seen objects by ID
 	var objectTracker = {};
 	//create an adjacency object and push it onto the adjacency list and the todo_list
-	var start = arc_point(null, ID, js_object, object_identifier(js_object));
+	var start = arc_point(null, null, js_object, object_identifier(js_object));
 	todo_list.push(start);
 	adjacencies.push(start);
 	//maps the first object to it's ID, maps OBJECT->ID
@@ -153,9 +153,18 @@ var decompose_network = function(js_object){
 							if(seen_refs.indexOf(narc_data)==-1){
 								masterOBJ[new_arc]= ID;
 								objectTracker[ID] = new_arc;
+								var src = adjacencies[new_arc["source_identifier"]]["data"];
+								var currentLocation = "object " + ID;
+								if(typeof(new_arc["source_identifier"]]["data"])!="string"){
+									adjacencies[new_arc["source_identifier"]]["data"] = "object " + ID;
+								}
+								else{
+									adjacencies[new_arc["source_identifier"]]["data"] = "object " + ID;	
+								}
 								ID++
 								todo_list.push(new_arc);
 							}
+							//otherwise just point the data property at the already found data spot
 							else{
 								new_arc["data"] = "object " + seen_refs.indexOf(narc_data);
 							}
