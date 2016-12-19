@@ -16,12 +16,13 @@
 *
 *
 */
-function arc_point(source_index, source_identifier, data, DT){
+function arc_point(source_index, source_identifier, data, DT, my_ID){
 	return {
 		"source_index": source_index,
 		"source_identifier": source_identifier,
 		"data": data,
-		"data_type": DT
+		"data_type": DT,
+		"my_ID": my_ID
 	};
 }
 
@@ -103,20 +104,23 @@ var decompose_network = function(js_object){
 	//create an ID variable which will keep track of unique objects found
 	var ID = 0;
 	//the references we have already seen, we want to avoid cycles, so it maps OBJECT->boolean
-	var seen_refs = [];
+	var seen_objects = [];
 	//the adjacency list of object references to values and other objects
-	var adjacencies = [];
+	var edges = [];
 	//the stack we track references to be explored via topology
 	var todo_list = [];
 	//list of seen objects by ID
 	var objectTracker = {};
+	//this will track newly found objects to the arc they are discovered on
+	var seen_arcs = [];
+
 	//create an adjacency object and push it onto the adjacency list and the todo_list
-	var start = arc_point(null, ID, js_object, object_identifier(js_object));
+	var start = arc_point(null, null, js_object, object_identifier(js_object), ID);
+	//set it up that we start exploring the object graph from the "root"
 	todo_list.push(start);
-	adjacencies.push(start);
-	//maps the first object to it's ID, maps OBJECT->ID
-	var masterOBJ = {};
-	masterOBJ[start]= ID;
+	//add this to our list of edges we have found indicating there is no "entry" and this is where we start
+	edges.push(start); 
+	//track 
 	objectTracker[ID] = start;
 	ID++;
 	//loop while theres still references to be explored on the object graph
@@ -124,14 +128,15 @@ var decompose_network = function(js_object){
 		//pop off the reference on todo_list[size-1]
 		var current_arc_point = todo_list.pop();
 		var arc_data = current_arc_point.data;
-		var my_ID = masterOBJ[current_arc_point];
+		var my_ID = current_arc_point["my_ID"];
 		//if the data isnt primitive we will loop!
 		//primitive data are anything that are not objects which hold other peices of data
 		//in this case strings are primitives as well as numeric values and booleans
 		if(!primitive_identifier(arc_data)){
 			//mark this datapoint as seen, we dont need to look at it ever again as we are about to 
 			//	stack the references
-			seen_refs.push(arc_data);
+			seen_objects.push(arc_data);
+			seen_arcs.push(current_arc_point);
 			//switch on the datatype: 
 				//nulls are objects so we ignore them, other peices of data are
 				//		then deconstructed by their contained identifiers, 
@@ -145,34 +150,31 @@ var decompose_network = function(js_object){
 						//if its not a primitive and refers to another object, we got here and stack it up
 						if(!primitive_identifier(narc_data)&&object_identifier(narc_data)!="null"){
 							//create a new arc object tracking data to and from this datapoint and key 
-							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data));
+							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data), ID);
 							//map this arc to the current ID
-							adjacencies.push(new_arc);
-							//console.log(seen_refs);
+							edges.push(new_arc);
+							//console.log(seen_objects);
 							//if we have not seen this datapoint yet we will add it to the stack and eventually get to it
-							if(seen_refs.indexOf(narc_data)==-1){
-								masterOBJ[new_arc]= ID;
+							if(seen_objects.indexOf(narc_data)==-1){
+								
 								objectTracker[ID] = new_arc;
 								ID++
 								todo_list.push(new_arc);
 							}
-							else{
-								new_arc["data"] = "object " + seen_refs.indexOf(narc_data);
-							}
 						}
 						else if(object_identifier(narc_data)!="null"){
-							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data));
-							masterOBJ[new_arc]= ID;
+							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data), ID);
+							
 							ID++
-							adjacencies.push(new_arc);
+							edges.push(new_arc);
 						}
 						//its a primitive so we need to map it and NOT recurse
 						else{
 							//create a new arc object for this reference to primitive data, and then add it to the adjacency list
-							var new_arc = arc_point(key,masterOBJ[current_arc_point],narc_data, typeof(narc_data));
-							masterOBJ[new_arc]= ID;
+							var new_arc = arc_point(key, my_ID,narc_data, typeof(narc_data), ID);
+							
 							ID++
-							adjacencies.push(new_arc);
+							edges.push(new_arc);
 						}
 
 					});
@@ -186,7 +188,33 @@ var decompose_network = function(js_object){
 		}
 		
 	}
-	return { "Object_Nodes": objectTracker, "adjacency_list":adjacencies};
+	//console.log(seen_objects)
+	//go through the list of edges and reassign the data property to the first arc ID of the target object 
+	for(var i = 0; i<edges.length; i++){
+		var edge = edges[i];
+		var current_datum = edge["data"];
+		//get the index of the object in the seen_objects array	
+		var object_index = seen_objects.indexOf(current_datum);
+		if(object_index>-1){
+			edge["data"] = seen_arcs[object_index]["my_ID"];	
+		}
+	}
+	//change each object found into it's type
+	Object.keys(objectTracker).forEach(function(key){
+		e_types = objectTracker[key]["data_type"];
+		switch(e_types){
+			case "object":
+				objectTracker[key] = {};
+				break;
+			case "array":
+				objectTracker[key] = [];
+				break;
+			default:
+				break;
+		}
+
+	});
+	return { "Object_Nodes": objectTracker, "edge_list":edges};
 }
 
 /***
@@ -194,43 +222,20 @@ var decompose_network = function(js_object){
 *	the reconstructed network
 *
 *INPUTS:
+	The output or output equivalent of the decompose_network() function. 
 *
 *OUTPUTS:
+	The first node in the node list indicating the same first node found in the 
+	graph before decomp
 */
 var recompose_network= function(network_decomposition){
 	var node_list = network_decomposition["Object_Nodes"];
-	var adjacencies = network_decomposition["adjacency_list"];
+	var edges = network_decomposition["edge_list"];
 
-	var start = null;
-	//check if we start with an object or an array to get things started
-	switch(node_list[0]["data_type"]){
-		case "object":
-			start = {};
-			break;
-		case "array":
-			start = [];
-			break;
-		default:
-			return node_list[0]["data"];
-			break;
-	}
-	//adjacencies we have seen
-	var seen_adjacencies = {};
-	var seen_nodes = {};
-	//set all seen adjacencies to false
-	//also set all seen nodes to false
-	for(var i = 1; i<adjacencies.length(); i++){
-		seen_adjacencies[adjacencies[i]] = false;
-		seen_nodes[adjacencies[i]["source_identifier"]] = false;
-	}
-	//for loop through the adjacencies
-	for(var i = adjacencies.length(); i>0; --i){
-		
-	}
+	//var 
 
 
-
-	return {};
+	return node_list[0];
 }
 
 
