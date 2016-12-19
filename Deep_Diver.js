@@ -232,9 +232,52 @@ var recompose_network= function(network_decomposition){
 	var node_list = network_decomposition["Object_Nodes"];
 	var edges = network_decomposition["edge_list"];
 
-	//var 
+	//loop backwards through the list of edges reconstructing each object
+	for(var i = edges.length - 1; i>0; i--){
+		var currentEdge = edges[i];
+		var previousEdge = edges[currentEdge["source_identifier"]];
 
-
+		//lets get the data types
+		var data_type = currentEdge["data_type"];
+		var source_data_type = previousEdge["data_type"];
+		var pointing_node = node_list[previousEdge["data"]];
+		var pointer = currentEdge["source_index"];
+		//switch on source data type
+		switch(source_data_type){
+			//get the node our current node is actually looking at 
+			
+			//with array we use the splice function, switch statement within 
+			//		determines if hard data or another node is the pointer
+			case "array":
+				pointer = parseInt(pointer);
+				switch(data_type){
+					
+					case "object":
+					case "array":
+						//set that 
+						pointing_node.splice(pointer, 0, node_list[currentEdge["data"]]);
+						break;
+					default:
+						pointing_node.splice(pointer, 0, currentEdge["data"]);
+						break;
+				}
+				break;
+			//with object we just point the source ID to the current edge with 
+			//		the current source_identifier 
+			case "object":
+				if(data_type=="object" || data_type == "array"){
+					pointing_node[currentEdge["source_index"]] = node_list[currentEdge["data"]];
+				}
+				else{
+					pointing_node[currentEdge["source_index"]] = currentEdge["data"];
+				}
+				break;
+			default:
+				break;
+		}
+	 	
+	}
+	//no matter what, we return the "root" node
 	return node_list[0];
 }
 
@@ -327,22 +370,28 @@ var testDriver = function(){
 	o2["data"] = 2;
 	o2["next"] = null;
 
-	console.log("object_refs");
-	console.log(decompose_network(o1));
-	o2["next"] = o1;
-
-	//console.log("SuperNest:");
-	//console.log(arrSuperNest);
-	//console.log("SuperNest end");
-
 	console.log("array of numbers");
+	console.log(arrNumbers);
 	console.log(decompose_network(arrNumbers));
+	console.log(recompose_network(decompose_network(arrNumbers)));
 	console.log("array of objects");
+	console.log(arrObjects);
 	console.log(decompose_network(arrObjects));
+	console.log(recompose_network(decompose_network(arrObjects)));
 	console.log("supernest");
+	console.log(arrSuperNest);
 	console.log(decompose_network(arrSuperNest));
-	console.log("object_refs v2");
+	console.log(recompose_network(decompose_network(arrSuperNest)));
+	console.log("object_refs");
+	console.log(o1);
 	console.log(decompose_network(o1));
+	console.log(recompose_network(decompose_network(o1)));
+	o2["next"] = o1;
+	console.log("object_refs v2: now with LOOPS");
+	console.log(o1);
+	console.log(decompose_network(o1));
+	console.log(recompose_network(decompose_network(o1)));
+
 
 
 
