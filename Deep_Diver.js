@@ -254,11 +254,30 @@ var recompose_network= function(network_decomposition){
 					
 					case "object":
 					case "array":
-						//set that 
-						pointing_node.splice(pointer, 0, node_list[currentEdge["data"]]);
+						//check if the array is even big enough so we can insert
+						//		if not we init a new, larger array and copy over
+						if(pointer>pointing_node.length){
+							var nArr = new Array(pointer);
+							for(var h = 0; h<pointing_node.length;h++){
+								nArr.splice(h, 1,pointing_node[h]);
+							}
+							pointing_node = nArr;
+							node_list[previousEdge["data"]] = nArr;
+						}
+						pointing_node.splice(pointer, 1, node_list[currentEdge["data"]]);
 						break;
 					default:
-						pointing_node.splice(pointer, 0, currentEdge["data"]);
+						//check if the array is even big enough so we can insert
+						//		if not we init a new, larger array and copy over
+						if(pointer>pointing_node.length){
+							var nArr = new Array(pointer);
+							for(var h = 0; h<pointing_node.length;h++){
+								nArr.splice(h, 1,pointing_node[h]);
+							}
+							pointing_node = nArr;
+							node_list[previousEdge["data"]] = nArr;
+						}
+						pointing_node.splice(pointer, 1, currentEdge["data"]);
 						break;
 				}
 				break;
@@ -275,7 +294,7 @@ var recompose_network= function(network_decomposition){
 			default:
 				break;
 		}
-	 	
+
 	}
 	//no matter what, we return the "root" node
 	return node_list[0];
@@ -391,7 +410,6 @@ var testDriver = function(){
 	console.log(o1);
 	console.log(decompose_network(o1));
 	console.log(recompose_network(decompose_network(o1)));
-
 
 
 
