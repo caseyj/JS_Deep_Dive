@@ -60,6 +60,9 @@ object_identifier = function(incoming_object){
 	else if(Array.isArray(incoming_object)){
 		return "array";
 	}
+	else if(typeof(incoming_object)==="function"){
+		return "function";
+	}
 	//otherwise its a regular object
 	return typeof(incoming_object);
 }
@@ -163,6 +166,9 @@ var decompose_network = function(js_object){
 							}
 						}
 						else if(object_identifier(narc_data)!="null"){
+							if(object_identifier(narc_data)==="function"){
+								narc_data = narc_data.toString();
+							}
 							var new_arc = arc_point(key,my_ID,narc_data, object_identifier(narc_data), ID);
 							
 							ID++
@@ -182,6 +188,7 @@ var decompose_network = function(js_object){
 				//ignore nulls entirely
 				case "null":
 					break;
+
 				default: 
 					break;
 			}
@@ -290,6 +297,10 @@ var recompose_network= function(network_decomposition){
 				else{
 					pointing_node[currentEdge["source_index"]] = currentEdge["data"];
 				}
+				break;
+			case "function":
+				//first get the name of the function, the pointer name is probably all thats needed
+				pointing_node[currentEdge["source_index"]] = eval(currentEdge["data"]);
 				break;
 			default:
 				break;
@@ -410,8 +421,9 @@ var testDriver = function(){
 	console.log(o1);
 	console.log(decompose_network(o1));
 	console.log(recompose_network(decompose_network(o1)));
-
-
+	var args = [1,2,3];
+	var a = function(a, b, c){console.log("hello"); var q = 24; var w = {"damn": "damn"}; var z = [0,1,2,3]; return z;}
+	console.log(a.toString());
 
 }
 
