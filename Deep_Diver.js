@@ -5,9 +5,7 @@
 *Description : A tool developed to automate deep copy operations of a large 
 		object network. With this system any javascript object should be taken 
 		and all connected pieces of data will be appropriately deep copied into
-		the target clone copy. 
-
-		In this current version a starting object(NODE) is given and
+		the target clone copy.
 *
 */
 
@@ -23,22 +21,6 @@ function arc_point(source_index, source_identifier, data, DT, my_ID){
 		"data": data,
 		"data_type": DT,
 		"my_ID": my_ID
-	};
-}
-
-/**
-*Initializes new squish_network object which contains all data needed to 
-		reconstruct an object
-*
-*
-*
-*/
-function squish_network(){
-	return {
-		//adjacency list of data connections
-		"arc_list": [],
-		//list of the empty notes and their reference strings
-		"node_list": {}
 	};
 }
 
@@ -311,34 +293,64 @@ var recompose_network= function(network_decomposition){
 	return node_list[0];
 }
 
-
 /**
-*Encodes the live data of an object into a parse-able json format in which a 
-	programmer could pass an object network around as a string
+*Given two arcs from an object decomposition returns their equality status
 *
 *Input:
-	A javascript object, and it's network, to be encoded into json
+	arc1: an arc to examine equality to a second provided arc
+	arc2: an arc to examine equality to a second provided arc
 *Output:
-	A json datasheet representing a given javascript object and it's network
+	boolean indicating equality between two arcs
 */
-encode = function(js_object){
-	return {};
+equivalent_arc = function(arc1, arc2){
+	//assume truth until otherwise
+	var equal = true;
+	//iterate over the keys for an arc, no need for equality check since these 
+	//	are guarenteed via the "equal objects" function which calls this function
+	Object.keys(arc1).forEach(function(key){
+		//if the values are not equal, return false and stop iterating
+		if(arc1[key]!=arc2[key]){
+			return false;
+		}
+	});
+
+	return equal;
 }
 
 /**
-*Decodes a json formatted file which includes javascript object network
-	data and returns an object consistent with the network blueprint
-	provided to the function
+*Given two suspected equivalent object networks, provide the suspected equal 
+	"roots" and this function will show if the object networks are equivalent.
+	This "proof" does not currently work on isomorphic networks if the roots are
+	not equivalent, this will return false.
 *
 *Input:
-	A json object describing a real javascript object which must be 
-		reconstructed.
+	object1: the first object root
+	object2: the second object root
 *Output:
-	A reconstructed javascript object, and it's network from a given
-		blueprint in json 
+	boolean indicating equality between both objects given.
 */
-decode = function(json_object){
-	return {};
+equal_objects = function(object1, object2){
+	//decompose both objects to edge lists
+	var o1_net = decompose_network(object1);
+	var o2_net = decompose_network(object2);
+	//assume true until false
+	var equivalent = true;
+	//if there are not enough edges then just return false as we assume there 
+	//	must be the same number of edges
+	if(o1_net["edge_list"].length!=o2_net["edge_list"].length){
+		return false;
+	}
+	//otherwise loop through the edges and check that they are equal
+	else{
+		for(var i = 0; i<o1_net["edge_list"].length; i++){
+			//if theyre ever not equal, return false and stop iterating
+			if(!equivalent_arc(o1_net["edge_list"][i], o2_net["edge_list"][i])){
+				return false;
+			}
+		}
+	}
+
+	return equivalent;
 }
 
 /**
@@ -350,7 +362,7 @@ decode = function(json_object){
 	A perfect deep-dive clone of the input object
 */
 copy_network = function(js_object){
-	return decode(encode(js_object));
+	return recompose_network(decompose_network(js_object));
 }
 
 
@@ -400,27 +412,38 @@ var testDriver = function(){
 	o2["data"] = 2;
 	o2["next"] = null;
 
+	//test for an array of numbers first
 	console.log("array of numbers");
 	console.log(arrNumbers);
 	console.log(decompose_network(arrNumbers));
 	console.log(recompose_network(decompose_network(arrNumbers)));
+	//if TRUE then the recomposed object is the same as the source object
+	console.log(equal_objects(arrNumbers, recompose_network(decompose_network(arrNumbers))));
 	console.log("array of objects");
 	console.log(arrObjects);
 	console.log(decompose_network(arrObjects));
 	console.log(recompose_network(decompose_network(arrObjects)));
+	//if TRUE then the recomposed object is the same as the source object
+	console.log(equal_objects(arrObjects, recompose_network(decompose_network(arrObjects))));
 	console.log("supernest");
 	console.log(arrSuperNest);
 	console.log(decompose_network(arrSuperNest));
 	console.log(recompose_network(decompose_network(arrSuperNest)));
+	//if TRUE then the recomposed object is the same as the source object
+	console.log(equal_objects(arrSuperNest, recompose_network(decompose_network(arrSuperNest))));
 	console.log("object_refs");
 	console.log(o1);
 	console.log(decompose_network(o1));
 	console.log(recompose_network(decompose_network(o1)));
+	//if TRUE then the recomposed object is the same as the source object
+	console.log(equal_objects(o1, recompose_network(decompose_network(o1))));
 	o2["next"] = o1;
 	console.log("object_refs v2: now with LOOPS");
 	console.log(o1);
 	console.log(decompose_network(o1));
 	console.log(recompose_network(decompose_network(o1)));
+	//if TRUE then the recomposed object is the same as the source object
+	console.log(equal_objects(o1, recompose_network(decompose_network(o1))));
 	var args = [1,2,3];
 	var a = function(a, b, c){console.log("hello"); var q = 24; var w = {"damn": "damn"}; var z = [0,1,2,3]; return z;}
 	console.log(a.toString());
