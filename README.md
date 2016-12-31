@@ -14,3 +14,4 @@ sourceNode = nodeList[currentEdge["source_index"]] ->"source_identifier"-> nodeL
 
 
 ##How To Use It
+Call the function "copy_network" from Deep_Diver.js swith your targetted object to copy as the argument and it will return your copied object network.
